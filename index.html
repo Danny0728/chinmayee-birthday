@@ -1031,9 +1031,30 @@ function handleCorrectAnswer(){
     burstConfetti(18);
 
     if (poppedCount >= balloons.length) {
-      // Brief pause so she can actually see the 4th word land
-      // before the words merge into the single combined line.
+      // Start the song RIGHT NOW — synchronously, still inside this
+      // same click/tap handler. Mobile browsers (especially iOS
+      // Safari) only allow audio to autoplay when .play() is called
+      // directly within a user gesture's call stack; once it's
+      // deferred behind a setTimeout, they silently block it. The
+      // visual merge/reveal below can still be delayed — that part
+      // is just CSS and doesn't need a live gesture.
+      startBirthdaySong();
       setTimeout(revealSurprise, 500);
+    }
+  }
+
+  function startBirthdaySong(){
+    const song = document.getElementById('bdaySong');
+    try { song.currentTime = 0; } catch(err) { console.log('Could not reset song time (safe to ignore):', err); }
+    try {
+      const playPromise = song.play();
+      if (playPromise && typeof playPromise.catch === 'function') {
+        playPromise.catch(() => {
+          console.log('Song autoplay was blocked by the browser — use the replay button.');
+        });
+      }
+    } catch(err) {
+      console.log('song.play() failed (safe to ignore):', err);
     }
   }
 
@@ -1053,21 +1074,6 @@ function handleCorrectAnswer(){
 
       // Bigger confetti burst for the full reveal
       burstConfetti(70);
-
-      // Start the birthday song (best-effort — wrapped defensively, see
-      // handleCorrectAnswer() above for why currentTime is try/catch'd)
-      const song = document.getElementById('bdaySong');
-      try { song.currentTime = 0; } catch(err) { console.log('Could not reset song time (safe to ignore):', err); }
-      try {
-        const playPromise = song.play();
-        if (playPromise && typeof playPromise.catch === 'function') {
-          playPromise.catch(() => {
-            console.log('Song autoplay was blocked by the browser — use the replay button.');
-          });
-        }
-      } catch(err) {
-        console.log('song.play() failed (safe to ignore):', err);
-      }
 
       // Fade in the message card + replay button
       postPopContent.style.display = 'block';
