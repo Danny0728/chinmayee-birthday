@@ -1,0 +1,1147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Happy 13th Birthday!</title>
+
+<!-- ============================================================
+     GOOGLE FONTS — Poppins (headings) + Quicksand (body)
+     ============================================================ -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+/* ================================================================
+   SECTION: ROOT VARIABLES / THEME
+   ================================================================ */
+:root{
+  --pink: #ff6fa5;
+  --purple: #a374ff;
+  --blue: #5ec6ff;
+  --yellow: #ffd23f;
+  --mint: #4fe0c4;
+  --dark: #2b1444;
+  --card-bg: rgba(255,255,255,0.92);
+  font-size: 16px;
+}
+
+*{ box-sizing: border-box; margin:0; padding:0; }
+
+html,body{
+  width:100%;
+  height:100%;
+  overflow-x:hidden;
+  font-family: 'Quicksand', sans-serif;
+  color: var(--dark);
+  background: var(--dark);
+}
+
+h1,h2,h3{ font-family:'Poppins', sans-serif; }
+
+button{
+  font-family:'Quicksand', sans-serif;
+  cursor:pointer;
+  border:none;
+  outline:none;
+}
+
+/* ================================================================
+   SECTION: SCREEN WRAPPERS
+   ================================================================ */
+.screen{
+  position:relative;
+  width:100%;
+  min-height:100vh;
+  min-height:100dvh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+}
+
+#wishScreen{
+  display:none; /* revealed via JS after correct answer */
+  background: linear-gradient(135deg, #ffb6d9 0%, #c9a6ff 45%, #8fd8ff 100%);
+  background-size: 300% 300%;
+  animation: gradientShift 14s ease infinite;
+  flex-direction: column;
+  padding: 2.5rem 1.25rem 4rem;
+  text-align:center;
+}
+
+@keyframes gradientShift{
+  0%{background-position:0% 50%;}
+  50%{background-position:100% 50%;}
+  100%{background-position:0% 50%;}
+}
+
+/* ================================================================
+   SECTION 0: "DO YOU WANT THE SURPRISE?" INTRO SCREEN
+   ================================================================ */
+#introScreen{
+  background: linear-gradient(135deg, #8fd8ff 0%, #c9a6ff 45%, #ffb6d9 100%);
+  background-size: 300% 300%;
+  animation: gradientShift 14s ease infinite;
+  flex-direction: column;
+  padding: 2rem 1.25rem;
+  text-align:center;
+}
+
+.intro-card{
+  position:relative;
+  z-index:3;
+  width:min(92vw, 460px);
+  background: var(--card-bg);
+  border-radius: 28px;
+  padding: 2.25rem 1.75rem;
+  box-shadow: 0 25px 60px rgba(0,0,0,0.3), 0 0 0 6px rgba(255,255,255,0.25);
+  backdrop-filter: blur(6px);
+  animation: cardPop 0.6s cubic-bezier(.2,1.4,.4,1) both;
+}
+
+.intro-card h1{
+  font-size: clamp(1.5rem, 5.5vw, 2.1rem);
+  font-weight:800;
+  background: linear-gradient(90deg, var(--pink), var(--purple), var(--blue));
+  -webkit-background-clip:text;
+  background-clip:text;
+  color:transparent;
+  margin-bottom:0.7rem;
+  line-height:1.25;
+}
+
+.intro-card p.subtitle{
+  font-size:1rem;
+  color:#5a4a72;
+  margin-bottom:1.8rem;
+}
+
+/* Row holding Yes + No. Kept relative so the No button has a
+   real starting position before it starts "dodging". */
+.intro-buttons{
+  /* NOTE: intentionally NOT position:relative — #noBtn's dodge math
+     positions it relative to .intro-card (the nearest positioned
+     ancestor), so this row must stay unpositioned or the button's
+     bounds calculation in JS would be measured against the wrong box. */
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  min-height: 60px;
+}
+
+.intro-btn{
+  padding: 0.9rem 1.8rem;
+  border-radius: 999px;
+  font-weight:700;
+  font-size:1.05rem;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+#yesBtn{
+  color:#fff;
+  background: linear-gradient(90deg, var(--pink), var(--purple));
+  box-shadow: 0 10px 24px rgba(163,116,255,0.4);
+}
+#yesBtn:hover{ transform: translateY(-2px) scale(1.03); box-shadow: 0 14px 30px rgba(163,116,255,0.5); }
+#yesBtn:active{ transform: translateY(0) scale(0.98); }
+
+/* ---- The "runaway" No button ----
+   Starts as a normal in-flow button. The moment a pointer/touch/
+   keyboard-focus gets near it, JS flips it to position:fixed and
+   teleports it to a random spot on screen so it can never actually
+   be pressed. Works the same way for mouse hover, touch, and Tab
+   (see the dodgeNoButton() JS below). */
+#noBtn{
+  color: var(--dark);
+  background:#fff;
+  border: 2px solid #e3d6ff;
+  box-shadow: 0 8px 18px rgba(0,0,0,0.12);
+  touch-action: manipulation;
+}
+#noBtn.dodging{
+  /* Positioned relative to .intro-card (which is position:relative),
+     so the button can only roam inside the card, never off-screen. */
+  position: absolute;
+  z-index: 60;
+  transition: left 0.6s ease, top 0.6s ease;
+}
+
+/* ================================================================
+   SECTION 1: PUZZLE / LANDING SCREEN — video + overlay
+   ================================================================ */
+#puzzleScreen{
+  display:none; /* revealed via JS after "Yes" is clicked on the intro screen */
+  background: linear-gradient(135deg,#2b1444,#4b1f7a 60%,#1c0f38);
+  /* Push the puzzle card toward the bottom (instead of dead-center)
+     so it doesn't sit directly over a face in the background video,
+     and keep it well clear of the edge with padding. */
+  align-items: flex-end;
+  padding-bottom: clamp(1.25rem, 6vh, 3.5rem);
+}
+
+/* ---- Background video ----
+   Uses birthday-video.mp4, sitting next to this HTML file. It plays
+   behind the puzzle card, looping until the puzzle is solved (keep
+   muted+autoplay so mobile browsers allow autoplay without a tap). */
+#bgVideo{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  /* Shifts which part of the video shows through the crop — lower
+     the vertical (2nd) number to show more of the TOP of the video,
+     raise it to show more of the BOTTOM. 50% 50% = dead center. */
+  object-position: 50% 20%;
+  z-index:0;
+  filter: brightness(0.55) saturate(1.1);
+}
+
+/* Soft color wash on top of the video so the card stays readable */
+.video-overlay{
+  position:absolute;
+  inset:0;
+  z-index:1;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(255,111,165,0.35), transparent 55%),
+    radial-gradient(circle at 80% 80%, rgba(94,198,255,0.35), transparent 55%);
+  pointer-events:none;
+}
+
+/* Floating decorative balloons on the puzzle screen */
+.balloon{
+  position:absolute;
+  z-index:1;
+  width:46px;
+  height:58px;
+  border-radius:50% 50% 50% 50% / 55% 55% 45% 45%;
+  opacity:0.85;
+  animation: floatUp linear infinite;
+  pointer-events:none;
+}
+.balloon::after{
+  content:"";
+  position:absolute;
+  bottom:-22px;
+  left:50%;
+  width:2px;
+  height:24px;
+  background:rgba(255,255,255,0.5);
+}
+@keyframes floatUp{
+  0%{ transform: translateY(110vh) rotate(-4deg); }
+  50%{ transform: translateY(40vh) rotate(4deg); }
+  100%{ transform: translateY(-20vh) rotate(-4deg); }
+}
+
+/* ---- Puzzle card ---- */
+.puzzle-card{
+  position:relative;
+  z-index:2;
+  width:min(92vw, 460px);
+  /* More transparent than a typical card + a stronger blur, so the
+     background video (and her face in it) still reads through
+     instead of being fully hidden behind solid white. Tweak the
+     0.55 alpha below if you want it more/less see-through. */
+  background: rgba(255,255,255,0.55);
+  border-radius: 28px;
+  padding: 2rem 1.75rem 2.25rem;
+  text-align:center;
+  box-shadow: 0 25px 60px rgba(0,0,0,0.45), 0 0 0 6px rgba(255,255,255,0.08);
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  animation: cardPop 0.6s cubic-bezier(.2,1.4,.4,1) both;
+}
+
+@keyframes cardPop{
+  0%{ opacity:0; transform: translateY(24px) scale(0.94); }
+  100%{ opacity:1; transform: translateY(0) scale(1); }
+}
+
+.puzzle-badge{
+  display:inline-block;
+  font-family:'Poppins',sans-serif;
+  font-weight:700;
+  font-size:0.75rem;
+  letter-spacing:0.08em;
+  text-transform:uppercase;
+  color:#fff;
+  background: linear-gradient(90deg, var(--pink), var(--purple));
+  padding:0.4rem 0.9rem;
+  border-radius:999px;
+  margin-bottom:1rem;
+}
+
+.puzzle-card h1{
+  font-size: clamp(1.4rem, 5vw, 1.9rem);
+  font-weight:800;
+  background: linear-gradient(90deg, var(--pink), var(--purple), var(--blue));
+  -webkit-background-clip:text;
+  background-clip:text;
+  color:transparent;
+  margin-bottom:0.6rem;
+  line-height:1.25;
+}
+
+.puzzle-card p.subtitle{
+  font-size:0.95rem;
+  color:#5a4a72;
+  margin-bottom:1.25rem;
+}
+
+/* ---- The riddle text ----
+   EDIT PLACEHOLDER: change the riddle text below if you want a
+   different puzzle. Just keep ANSWER (in the JS section) matching. */
+.riddle-box{
+  background: linear-gradient(135deg, #fff3f8, #f3ecff);
+  border: 2px dashed var(--purple);
+  border-radius:16px;
+  padding:1rem 1.1rem;
+  font-size:1rem;
+  font-weight:600;
+  color: var(--dark);
+  margin-bottom:1.4rem;
+  line-height:1.5;
+}
+
+.answer-form{
+  display:flex;
+  gap:0.6rem;
+  margin-bottom:0.8rem;
+}
+
+#answerInput{
+  flex:1;
+  padding:0.85rem 1rem;
+  border-radius:14px;
+  border:2px solid #e3d6ff;
+  font-family:'Quicksand',sans-serif;
+  font-size:1.05rem;
+  font-weight:600;
+  text-align:center;
+  background:#fff;
+  color:var(--dark);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+#answerInput:focus{
+  border-color: var(--pink);
+  box-shadow: 0 0 0 4px rgba(255,111,165,0.18);
+}
+
+#submitBtn{
+  padding:0.85rem 1.3rem;
+  border-radius:14px;
+  font-weight:700;
+  font-size:1rem;
+  color:#fff;
+  background: linear-gradient(90deg, var(--pink), var(--purple));
+  box-shadow: 0 10px 20px rgba(163,116,255,0.35);
+  transition: transform 0.15s, box-shadow 0.15s;
+  white-space:nowrap;
+}
+#submitBtn:hover{ transform: translateY(-2px); box-shadow: 0 14px 26px rgba(163,116,255,0.45); }
+#submitBtn:active{ transform: translateY(0); }
+
+.feedback{
+  min-height:1.4rem;
+  font-weight:700;
+  font-size:0.92rem;
+  color:#e0356b;
+}
+
+.hint-text{
+  margin-top:0.6rem;
+  font-size:0.85rem;
+  color:#7b5fae;
+  font-weight:600;
+}
+
+/* Shake animation for wrong answers */
+.shake{
+  animation: shakeAnim 0.45s;
+}
+@keyframes shakeAnim{
+  10%, 90% { transform: translateX(-2px); }
+  20%, 80% { transform: translateX(4px); }
+  30%, 50%, 70% { transform: translateX(-8px); }
+  40%, 60% { transform: translateX(8px); }
+}
+
+/* ================================================================
+   SECTION: CONFETTI BURST (canvas-free, pure DOM/CSS)
+   ================================================================ */
+#confettiLayer{
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  z-index:9999;
+  overflow:hidden;
+}
+.confetti-piece{
+  position:absolute;
+  top:-10px;
+  width:9px;
+  height:14px;
+  opacity:0.9;
+  animation: confettiFall linear forwards;
+}
+@keyframes confettiFall{
+  0%{ transform: translateY(0) rotate(0deg); opacity:1; }
+  100%{ transform: translateY(105vh) rotate(540deg); opacity:0.9; }
+}
+
+/* Ambient confetti loop on wish screen */
+.ambient-confetti .confetti-piece{
+  animation-name: confettiFall;
+  animation-iteration-count: infinite;
+}
+
+/* ================================================================
+   SECTION 3: WISH SCREEN CONTENT
+   ================================================================ */
+.wish-inner{
+  position:relative;
+  z-index:3;
+  max-width: 640px;
+  width:100%;
+  margin: 0 auto;
+}
+
+.balloon-row{
+  display:flex;
+  justify-content:center;
+  gap: 1.1rem;
+  margin-bottom: -1.2rem;
+  position:relative;
+  z-index:2;
+}
+.mini-balloon{
+  width:34px;
+  height:44px;
+  border-radius:50% 50% 50% 50% / 55% 55% 45% 45%;
+  animation: bob 3.2s ease-in-out infinite;
+}
+.mini-balloon:nth-child(2){ animation-delay:0.4s; }
+.mini-balloon:nth-child(3){ animation-delay:0.8s; }
+.mini-balloon:nth-child(4){ animation-delay:1.2s; }
+.mini-balloon:nth-child(5){ animation-delay:1.6s; }
+@keyframes bob{
+  0%,100%{ transform: translateY(0); }
+  50%{ transform: translateY(-14px); }
+}
+
+#wishScreen h1#wishHeading{
+  font-size: clamp(2.1rem, 8vw, 3.4rem);
+  font-weight:800;
+  color:#fff;
+  text-shadow: 0 6px 24px rgba(75,20,90,0.35);
+  margin: 1.4rem 0 0.6rem;
+  line-height:1.15;
+  animation: sparklePulse 2.6s ease-in-out infinite;
+}
+
+@keyframes sparklePulse{
+  0%,100%{ text-shadow: 0 6px 24px rgba(75,20,90,0.35), 0 0 0px rgba(255,255,255,0); }
+  50%{ text-shadow: 0 6px 24px rgba(75,20,90,0.35), 0 0 26px rgba(255,255,255,0.55); }
+}
+
+.wish-sub{
+  font-size:1.1rem;
+  font-weight:700;
+  color:#fff;
+  opacity:0.95;
+  margin-bottom:1.8rem;
+}
+
+/* ---- Balloon-pop mini game ---- */
+.pop-balloon-row{
+  position:relative;
+  z-index:3;
+  display:flex;
+  justify-content:center;
+  align-items:flex-end;
+  gap: 1.1rem;
+  margin: 1.6rem 0 0.6rem;
+  flex-wrap:wrap;
+}
+
+.pop-balloon{
+  position:relative;
+  width:64px;
+  height:80px;
+  border-radius:50% 50% 50% 50% / 55% 55% 45% 45%;
+  box-shadow:
+    0 10px 22px rgba(0,0,0,0.2),
+    inset -8px -8px 14px rgba(0,0,0,0.08),
+    inset 6px 8px 12px rgba(255,255,255,0.35);
+  animation: bob 3s ease-in-out infinite;
+  transition: transform 0.2s ease, opacity 0.35s ease;
+  cursor:pointer;
+}
+.pop-balloon::after{ /* string */
+  content:"";
+  position:absolute;
+  bottom:-20px;
+  left:50%;
+  width:2px;
+  height:20px;
+  background:rgba(255,255,255,0.65);
+}
+.pop-balloon:nth-child(2){ animation-delay:0.3s; }
+.pop-balloon:nth-child(3){ animation-delay:0.6s; }
+.pop-balloon:nth-child(4){ animation-delay:0.9s; }
+.pop-balloon:hover:not(.popped){ transform: scale(1.08); }
+.pop-balloon:focus-visible{ outline: 3px solid #fff; outline-offset: 3px; }
+
+.pop-balloon.popped{
+  animation: none;
+  pointer-events:none;
+  transform: scale(1.8);
+  opacity:0;
+}
+
+/* ---- Word-by-word reveal row ----
+   One word fades/pops in per balloon popped: Wish / you / happiest /
+   birthday!. Once all 4 are showing, .merging plays a brief
+   shrink-and-fade so it reads as the words "coming together" right
+   before the single combined line (.pop-reveal-text) takes over. */
+.pop-words-row{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  gap: 0.55rem;
+  min-height: 2.6rem;
+  margin: 0.9rem 0 0.3rem;
+  flex-wrap:wrap;
+}
+.pop-word{
+  font-family:'Poppins',sans-serif;
+  font-weight:800;
+  font-size: clamp(1.05rem, 4.5vw, 1.4rem);
+  color:#fff;
+  text-shadow: 0 4px 14px rgba(75,20,90,0.35);
+  opacity:0;
+  transform: scale(0.5) translateY(10px);
+  transition: opacity 0.35s ease, transform 0.35s cubic-bezier(.3,1.4,.4,1);
+}
+.pop-word.shown{
+  opacity:1;
+  transform: scale(1) translateY(0);
+}
+.pop-words-row.merging .pop-word{
+  transition: opacity 0.45s ease, transform 0.45s ease;
+  opacity:0;
+  transform: scale(0.4);
+}
+.pop-words-row.merging .pop-word:nth-child(1){ transition-delay:0s; }
+.pop-words-row.merging .pop-word:nth-child(2){ transition-delay:0.06s; }
+.pop-words-row.merging .pop-word:nth-child(3){ transition-delay:0.12s; }
+.pop-words-row.merging .pop-word:nth-child(4){ transition-delay:0.18s; }
+
+/* "Wish you happiest birthday!" — revealed after the words merge */
+@keyframes popTextIn{
+  0%{ transform: scale(0.7); opacity:0; }
+  60%{ transform: scale(1.08); opacity:1; }
+  100%{ transform: scale(1); opacity:1; }
+}
+.pop-reveal-text{
+  font-family:'Poppins',sans-serif;
+  font-size: clamp(1.3rem, 5.5vw, 1.9rem);
+  font-weight:800;
+  color:#fff;
+  text-shadow: 0 6px 20px rgba(75,20,90,0.4);
+  opacity:0;
+  max-height:0;
+  overflow:hidden;
+  margin:0;
+}
+.pop-reveal-text.revealed{
+  opacity:1;
+  max-height:200px;
+  margin: 0.5rem 0 1.6rem;
+  animation: popTextIn 0.6s ease forwards;
+}
+
+/* Message/gallery/replay — hidden until all balloons are popped */
+.post-pop-content{
+  display:none;
+  opacity:0;
+}
+.post-pop-content.revealed{
+  display:block;
+  transition: opacity 0.7s ease;
+}
+
+/* ---- Personalized message card ----
+   EDIT PLACEHOLDER: swap [SISTER'S NAME] and the message paragraph
+   with your own heartfelt note. */
+.message-card{
+  background: var(--card-bg);
+  border-radius:24px;
+  padding: 1.8rem 1.6rem;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+  margin-bottom: 1.8rem;
+  text-align:left;
+}
+.message-card h2{
+  font-size:1.15rem;
+  color: var(--purple);
+  margin-bottom:0.7rem;
+}
+.message-card p{
+  font-size:1rem;
+  line-height:1.65;
+  color:#4a3b60;
+}
+.message-card p + p{ margin-top:0.8rem; }
+.message-card .signoff{
+  margin-top:1rem;
+  font-weight:700;
+  color: var(--pink);
+}
+
+/* ---- Controls (song replay) ---- */
+.wish-controls{
+  display:flex;
+  justify-content:center;
+  gap:0.8rem;
+  flex-wrap:wrap;
+}
+.control-btn{
+  display:inline-flex;
+  align-items:center;
+  gap:0.5rem;
+  padding:0.85rem 1.5rem;
+  border-radius:999px;
+  font-weight:700;
+  font-size:0.98rem;
+  color: var(--dark);
+  background:#fff;
+  box-shadow: 0 12px 24px rgba(0,0,0,0.18);
+  transition: transform 0.15s;
+}
+.control-btn:hover{ transform: translateY(-2px) scale(1.02); }
+
+/* Sparkle decorations */
+.sparkle{
+  position:absolute;
+  font-size:1.4rem;
+  animation: sparkleTwinkle 1.8s ease-in-out infinite;
+  z-index:2;
+  pointer-events:none;
+}
+@keyframes sparkleTwinkle{
+  0%,100%{ opacity:0.2; transform: scale(0.8) rotate(0deg); }
+  50%{ opacity:1; transform: scale(1.15) rotate(20deg); }
+}
+
+/* ================================================================
+   RESPONSIVE TWEAKS
+   ================================================================ */
+@media (max-width: 420px){
+  .answer-form{ flex-direction:column; }
+  #submitBtn{ width:100%; }
+}
+
+/* Respect users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce){
+  *{ animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
+}
+</style>
+</head>
+<body>
+
+<!-- ================================================================
+     SCREEN 0: "DO YOU WANT THE SURPRISE?" INTRO SCREEN
+     ================================================================ -->
+<div class="screen" id="introScreen">
+
+  <span class="sparkle" style="top:10%; left:12%;">✨</span>
+  <span class="sparkle" style="top:18%; left:82%; animation-delay:0.4s;">✨</span>
+  <span class="sparkle" style="top:75%; left:8%; animation-delay:0.8s;">✨</span>
+  <span class="sparkle" style="top:78%; left:88%; animation-delay:1.2s;">✨</span>
+
+  <div class="balloon" style="left:10%; background:var(--pink); animation-duration:9s; animation-delay:0s;"></div>
+  <div class="balloon" style="left:80%; background:var(--yellow); animation-duration:11s; animation-delay:2s;"></div>
+  <div class="balloon" style="left:45%; background:var(--mint); animation-duration:10s; animation-delay:1s;"></div>
+
+  <div class="intro-card">
+    <h1>Do you want the surprise? 🎁</h1>
+    <p class="subtitle">There's only one correct answer here... 😏</p>
+
+    <div class="intro-buttons">
+      <button type="button" class="intro-btn" id="yesBtn">Yes! 🎉</button>
+      <!-- This button runs away the moment you try to click it — on
+           mouse hover, on tap, and on keyboard Tab. It's a joke, it
+           is never meant to be pressable. See dodgeNoButton() in JS. -->
+      <button type="button" class="intro-btn" id="noBtn">No</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================
+     SCREEN 1: PUZZLE / LANDING SCREEN
+     ================================================================ -->
+<div class="screen" id="puzzleScreen">
+
+  <!-- Background video: plays on loop until the puzzle is solved.
+       File: birthday-video.mp4 (must stay in the same folder as this
+       HTML file — replace it with a different .mp4 any time by
+       swapping the file and keeping this filename, or updating src). -->
+  <video id="bgVideo" src="birthday-video.mp4" autoplay loop muted playsinline></video>
+  <div class="video-overlay"></div>
+
+  <!-- Decorative floating balloons (purely CSS, no images needed) -->
+  <div class="balloon" style="left:8%; background:var(--pink); animation-duration:9s; animation-delay:0s;"></div>
+  <div class="balloon" style="left:20%; background:var(--yellow); animation-duration:11s; animation-delay:2s;"></div>
+  <div class="balloon" style="left:75%; background:var(--blue); animation-duration:10s; animation-delay:1s;"></div>
+  <div class="balloon" style="left:85%; background:var(--mint); animation-duration:12s; animation-delay:3s;"></div>
+  <div class="balloon" style="left:50%; background:var(--purple); animation-duration:13s; animation-delay:4s;"></div>
+
+  <div class="puzzle-card" id="puzzleCard">
+    <span class="puzzle-badge">🎂 Birthday Lock 🎂</span>
+    <h1>Crack the Code to Unlock<br>Your Surprise!</h1>
+    <p class="subtitle">Solve the puzzle below to find out what's waiting for you...</p>
+
+    <!-- EDIT PLACEHOLDER: change riddle text here (keep ANSWER in JS matching) -->
+    <div class="riddle-box" id="riddleText">
+      🎉 I am 3 years younger than double the age you're turning today.
+      What number am I?
+    </div>
+
+    <form class="answer-form" id="answerForm">
+      <input
+        type="text"
+        id="answerInput"
+        inputmode="numeric"
+        autocomplete="off"
+        placeholder="Your answer..."
+        aria-label="Enter your answer"
+      />
+      <button type="submit" id="submitBtn">Submit 🎈</button>
+    </form>
+
+    <div class="feedback" id="feedbackMsg"></div>
+    <div class="hint-text" id="hintText" style="display:none;"></div>
+  </div>
+</div>
+
+<!-- ================================================================
+     SCREEN 3: BIRTHDAY WISH SCREEN
+     ================================================================ -->
+<div class="screen" id="wishScreen">
+
+  <span class="sparkle" style="top:8%; left:10%;">✨</span>
+  <span class="sparkle" style="top:15%; left:85%; animation-delay:0.4s;">✨</span>
+  <span class="sparkle" style="top:70%; left:6%; animation-delay:0.8s;">✨</span>
+  <span class="sparkle" style="top:80%; left:90%; animation-delay:1.2s;">✨</span>
+
+  <div class="wish-inner">
+
+    <!-- EDIT PLACEHOLDER: replace Chinmayee with her name if different -->
+    <h1 id="wishHeading">Happy 13th Birthday,<br>Chinmayee! 🎉</h1>
+    <p class="wish-sub" id="popInstructions">Pop all 4 balloons for your surprise! 🎈</p>
+
+    <!-- ---- Balloon-pop mini game ----
+         Tap/click each balloon (or Tab to it + press Enter/Space) to
+         pop it. Each balloon reveals one word of the wish, in order:
+         "Wish" -> "you" -> "happiest" -> "birthday!" (edit the
+         data-word attributes below to change the wording). Once all
+         four words have appeared, they merge into one big line, the
+         birthday song starts, and the message + replay button fade in.
+         See setupBalloonPopGame() in the JS section. -->
+    <div class="pop-balloon-row" id="popBalloonRow">
+      <button type="button" class="pop-balloon" data-word="Wish" style="background:var(--pink);" aria-label="Pop balloon 1"></button>
+      <button type="button" class="pop-balloon" data-word="you" style="background:var(--yellow);" aria-label="Pop balloon 2"></button>
+      <button type="button" class="pop-balloon" data-word="happiest" style="background:var(--blue);" aria-label="Pop balloon 3"></button>
+      <button type="button" class="pop-balloon" data-word="birthday!" style="background:var(--mint);" aria-label="Pop balloon 4"></button>
+    </div>
+
+    <!-- Fills in one word at a time as each balloon above is popped -->
+    <div class="pop-words-row" id="popWordsRow">
+      <span class="pop-word" id="popWord0"></span>
+      <span class="pop-word" id="popWord1"></span>
+      <span class="pop-word" id="popWord2"></span>
+      <span class="pop-word" id="popWord3"></span>
+    </div>
+
+    <!-- Revealed once all 4 words above merge together -->
+    <h2 class="pop-reveal-text" id="popRevealText">Wish you happiest birthday! 🎉</h2>
+
+    <!-- Hidden until all balloons are popped -->
+    <div class="post-pop-content" id="postPopContent">
+
+      <!-- EDIT PLACEHOLDER: personalize this message -->
+      <div class="message-card">
+        <h2>A little note for you 💌</h2>
+        <p>
+          [Write your heartfelt message here! Talk about a favorite memory
+          together, something you admire about her, or a fun inside joke —
+          whatever feels most "her".]
+        </p>
+        <p>
+          [Add a second paragraph if you'd like — maybe your wishes for her
+          13th year, or something you're excited to do together.]
+        </p>
+        <p class="signoff">— [Your Name], who loves you a whole lot 💕</p>
+      </div>
+
+      <div class="wish-controls">
+        <button class="control-btn" id="replayBtn">🔁 Play Song Again</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- REPLACE song-placeholder.mp3 WITH THE ACTUAL SONG FILE -->
+<audio id="bdaySong" src="song-placeholder.mp3" preload="auto"></audio>
+
+<!-- Layer for confetti burst / ambient confetti particles -->
+<div id="confettiLayer"></div>
+
+<script>
+/* ================================================================
+   SECTION: CONFIG — edit here for quick customization
+   ================================================================ */
+const CONFIG = {
+  // Correct answer to the puzzle. If you change the riddle text in
+  // the HTML above, update ANSWER to match.
+  ANSWER: 23,
+  // Attempts before a hint appears (unlimited attempts overall).
+  HINT_AFTER_ATTEMPTS: 2,
+  HINT_TEXT: "Hint: double 13, then subtract 3. 🎂",
+};
+
+/* ================================================================
+   SECTION: INTRO SCREEN — "Do you want the surprise?" + dodging
+   No button. Works via mouse hover, touch, AND keyboard Tab.
+   ================================================================ */
+(function setupIntroScreen(){
+  const introScreen = document.getElementById('introScreen');
+  const puzzleScreen = document.getElementById('puzzleScreen');
+  const yesBtn = document.getElementById('yesBtn');
+  const noBtn = document.getElementById('noBtn');
+  const bgVideo = document.getElementById('bgVideo');
+
+  /* ---- "No" button dodge logic ----
+     The button only ever moves WITHIN the intro card (never off
+     past its edges, never off-screen). On first interaction we lock
+     it into position:absolute (positioned relative to .intro-card,
+     which is position:relative) at its current spot, then every
+     later interaction slides it to a new random spot inside the
+     card's bounds — with a slow, easy transition rather than an
+     instant jump. */
+  const introCard = document.querySelector('.intro-card');
+
+  function dodgeNoButton(){
+    const cardRect = introCard.getBoundingClientRect();
+    const w = noBtn.offsetWidth;
+    const h = noBtn.offsetHeight;
+    const padding = 16; // keep clear of the card's rounded edges
+
+    if (!noBtn.classList.contains('dodging')) {
+      const btnRect = noBtn.getBoundingClientRect();
+      const startLeft = btnRect.left - cardRect.left;
+      const startTop = btnRect.top - cardRect.top;
+      noBtn.style.left = startLeft + 'px';
+      noBtn.style.top = startTop + 'px';
+      noBtn.classList.add('dodging');
+      // Force a reflow so the browser registers the starting
+      // position before we animate to the new one below.
+      void noBtn.offsetWidth;
+    }
+
+    const maxX = Math.max(padding, cardRect.width - w - padding);
+    const maxY = Math.max(padding, cardRect.height - h - padding);
+    const x = padding + Math.random() * (maxX - padding);
+    const y = padding + Math.random() * (maxY - padding);
+
+    noBtn.style.left = x + 'px';
+    noBtn.style.top = y + 'px';
+  }
+
+  // Desktop: dodge as soon as the pointer/mouse gets near it.
+  noBtn.addEventListener('pointerenter', dodgeNoButton);
+  // Mobile/touch: dodge on first touch, before the tap can register
+  // as a click on the button's original spot.
+  noBtn.addEventListener('touchstart', dodgeNoButton, { passive: true });
+  // Keyboard/Tab: dodge as soon as it receives focus, then hand
+  // focus back so Enter/Space can't "accidentally" activate it.
+  noBtn.addEventListener('focus', function(){
+    dodgeNoButton();
+    setTimeout(() => noBtn.blur(), 10);
+  });
+  // Fallback: if a click somehow still lands on it, dodge instead
+  // of doing anything else — this button is never meant to "work".
+  noBtn.addEventListener('click', function(e){
+    e.preventDefault();
+    dodgeNoButton();
+  });
+  // Keep it fully on-screen if the viewport is resized/rotated.
+  window.addEventListener('resize', function(){
+    if (noBtn.classList.contains('dodging')) dodgeNoButton();
+  });
+
+  /* ---- "Yes" button: reveal the puzzle screen ---- */
+  yesBtn.addEventListener('click', function(){
+    burstConfetti(50);
+    introScreen.style.transition = 'opacity 0.5s ease';
+    introScreen.style.opacity = '0';
+
+    setTimeout(() => {
+      introScreen.style.display = 'none';
+      puzzleScreen.style.display = 'flex';
+      puzzleScreen.style.opacity = '0';
+      requestAnimationFrame(() => {
+        puzzleScreen.style.transition = 'opacity 0.6s ease';
+        puzzleScreen.style.opacity = '1';
+      });
+      // The video was display:none until now, so (re)start playback.
+      bgVideo.play().catch(() => {
+        console.log('Background video autoplay was blocked — this is normal on some mobile browsers.');
+      });
+    }, 500);
+  });
+})();
+
+/* ================================================================
+   SECTION: PUZZLE LOGIC
+   ================================================================ */
+(function setupPuzzle(){
+  const form = document.getElementById('answerForm');
+  const input = document.getElementById('answerInput');
+  const feedback = document.getElementById('feedbackMsg');
+  const hint = document.getElementById('hintText');
+  const card = document.getElementById('puzzleCard');
+  let wrongAttempts = 0;
+
+  form.addEventListener('submit', function(e){
+    e.preventDefault();
+    const raw = input.value.trim();
+    const value = Number(raw);
+
+    if (raw !== '' && !isNaN(value) && value === CONFIG.ANSWER) {
+      feedback.textContent = '🎉 Correct! Happy Birthday Chinmayee!';
+      feedback.style.color = '#2fae6b';
+      handleCorrectAnswer();
+      return;
+    }
+
+    // Wrong answer: shake + friendly message
+    wrongAttempts++;
+    feedback.textContent = '❌ Wrong Answer! Try again 🎂';
+    feedback.style.color = '#e0356b';
+
+    // Restart the shake animation even on back-to-back wrong answers.
+    // Double requestAnimationFrame forces a reliable reflow across
+    // browsers (including mobile Safari) before re-adding the class.
+    card.classList.remove('shake');
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        card.classList.add('shake');
+      });
+    });
+
+    if (wrongAttempts >= CONFIG.HINT_AFTER_ATTEMPTS) {
+      hint.style.display = 'block';
+      hint.textContent = CONFIG.HINT_TEXT;
+    }
+
+    input.value = '';
+    input.focus();
+  });
+})();
+
+/* ================================================================
+   SECTION: VIDEO / AUDIO HANDLING + SCREEN TRANSITION
+   ================================================================ */
+function handleCorrectAnswer(){
+  const puzzleScreen = document.getElementById('puzzleScreen');
+  const wishScreen = document.getElementById('wishScreen');
+  const bgVideo = document.getElementById('bgVideo');
+
+  // Confetti burst as a celebratory transition cue
+  burstConfetti(90);
+
+  setTimeout(() => {
+    // Pause + hide the background video (best-effort — must never block
+    // the screen transition below, even if the video element errors)
+    try { bgVideo.pause(); } catch(err) { console.log('bgVideo.pause() failed:', err); }
+
+    // NOTE: the birthday song does NOT start here — it starts once all
+    // 4 balloons on the wish screen are popped. See setupBalloonPopGame().
+
+    // Fade out puzzle screen, fade in wish screen — this always runs,
+    // even if the video call above failed for any reason.
+    puzzleScreen.style.transition = 'opacity 0.6s ease';
+    puzzleScreen.style.opacity = '0';
+
+    setTimeout(() => {
+      puzzleScreen.style.display = 'none';
+      wishScreen.style.display = 'flex';
+      wishScreen.classList.add('ambient-confetti');
+      wishScreen.style.opacity = '0';
+      requestAnimationFrame(() => {
+        wishScreen.style.transition = 'opacity 0.8s ease';
+        wishScreen.style.opacity = '1';
+      });
+      startAmbientConfetti();
+    }, 600);
+  }, 500);
+}
+
+/* ================================================================
+   SECTION: BALLOON-POP MINI GAME (on the wish screen)
+   Pop all 4 balloons -> song plays + "Wish u a very happy birthday"
+   text appears + the message/gallery/replay section fades in.
+   ================================================================ */
+(function setupBalloonPopGame(){
+  const balloons = Array.prototype.slice.call(document.querySelectorAll('.pop-balloon'));
+  const wordSpans = Array.prototype.slice.call(document.querySelectorAll('.pop-word'));
+  const wordsRow = document.getElementById('popWordsRow');
+  const revealText = document.getElementById('popRevealText');
+  const postPopContent = document.getElementById('postPopContent');
+  const popInstructions = document.getElementById('popInstructions');
+  let poppedCount = 0;
+  let alreadyRevealed = false;
+
+  function popBalloon(balloon){
+    if (balloon.classList.contains('popped')) return;
+    balloon.classList.add('popped');
+    balloon.disabled = true;
+
+    // Reveal this balloon's word (Wish / you / happiest / birthday!)
+    // in the matching slot below the balloon row.
+    const idx = balloons.indexOf(balloon);
+    const wordSpan = wordSpans[idx];
+    if (wordSpan) {
+      wordSpan.textContent = balloon.dataset.word || '';
+      wordSpan.classList.add('shown');
+    }
+
+    poppedCount++;
+
+    // A little confetti burst for each pop
+    burstConfetti(18);
+
+    if (poppedCount >= balloons.length) {
+      // Brief pause so she can actually see the 4th word land
+      // before the words merge into the single combined line.
+      setTimeout(revealSurprise, 500);
+    }
+  }
+
+  function revealSurprise(){
+    if (alreadyRevealed) return;
+    alreadyRevealed = true;
+
+    if (popInstructions) popInstructions.style.display = 'none';
+
+    // The 4 separate words shrink/fade together ("coming together")...
+    wordsRow.classList.add('merging');
+
+    setTimeout(() => {
+      // ...then the row is swapped out for the single combined line.
+      wordsRow.style.display = 'none';
+      revealText.classList.add('revealed');
+
+      // Bigger confetti burst for the full reveal
+      burstConfetti(70);
+
+      // Start the birthday song (best-effort — wrapped defensively, see
+      // handleCorrectAnswer() above for why currentTime is try/catch'd)
+      const song = document.getElementById('bdaySong');
+      try { song.currentTime = 0; } catch(err) { console.log('Could not reset song time (safe to ignore):', err); }
+      try {
+        const playPromise = song.play();
+        if (playPromise && typeof playPromise.catch === 'function') {
+          playPromise.catch(() => {
+            console.log('Song autoplay was blocked by the browser — use the replay button.');
+          });
+        }
+      } catch(err) {
+        console.log('song.play() failed (safe to ignore):', err);
+      }
+
+      // Fade in the message card + replay button
+      postPopContent.style.display = 'block';
+      postPopContent.style.opacity = '0';
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          postPopContent.classList.add('revealed');
+          postPopContent.style.opacity = '1';
+        });
+      });
+    }, 500); // matches the .merging transition duration above
+  }
+
+  balloons.forEach(function(balloon){
+    balloon.addEventListener('click', function(){ popBalloon(balloon); });
+    // Touch devices: pop on first touch too, so it feels instant
+    balloon.addEventListener('touchstart', function(e){
+      e.preventDefault();
+      popBalloon(balloon);
+    }, { passive: false });
+    // Keyboard accessibility: Enter/Space already trigger a <button>'s
+    // click event natively, so no extra keydown handler is needed.
+  });
+})();
+
+/* ---- Replay button ---- */
+document.getElementById('replayBtn').addEventListener('click', function(){
+  const song = document.getElementById('bdaySong');
+  song.currentTime = 0;
+  song.play().catch(() => {
+    alert('Tap OK, then press play again — your browser needs one more tap to allow sound. 🎵');
+  });
+});
+
+/* ================================================================
+   SECTION: CONFETTI ANIMATIONS
+   ================================================================ */
+const CONFETTI_COLORS = ['#ff6fa5', '#a374ff', '#5ec6ff', '#ffd23f', '#4fe0c4', '#ffffff'];
+
+function makeConfettiPiece(container, ambient){
+  const piece = document.createElement('div');
+  piece.className = 'confetti-piece';
+  const color = CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)];
+  piece.style.background = color;
+  piece.style.left = Math.random() * 100 + 'vw';
+  const duration = 2.5 + Math.random() * 2.5;
+  piece.style.animationDuration = duration + 's';
+  piece.style.animationDelay = (ambient ? Math.random() * 4 : Math.random() * 0.4) + 's';
+  piece.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+  container.appendChild(piece);
+  // Clean up one-shot burst pieces after they finish falling
+  if (!ambient) {
+    setTimeout(() => piece.remove(), (duration + 0.5) * 1000);
+  }
+  return piece;
+}
+
+function burstConfetti(count){
+  const layer = document.getElementById('confettiLayer');
+  for (let i = 0; i < count; i++) {
+    makeConfettiPiece(layer, false);
+  }
+}
+
+function startAmbientConfetti(){
+  const layer = document.getElementById('confettiLayer');
+  // A lighter, continuously-replenished confetti flow for the wish screen
+  function spawnBatch(){
+    for (let i = 0; i < 6; i++) {
+      const piece = makeConfettiPiece(layer, true);
+      setTimeout(() => piece.remove(), 6500);
+    }
+  }
+  spawnBatch();
+  setInterval(spawnBatch, 1400);
+}
+</script>
+</body>
+</html>
