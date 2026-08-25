@@ -176,11 +176,12 @@ button{
 #puzzleScreen{
   display:none; /* revealed via JS after "Yes" is clicked on the intro screen */
   background: linear-gradient(135deg,#2b1444,#4b1f7a 60%,#1c0f38);
-  /* Push the puzzle card toward the bottom (instead of dead-center)
-     so it doesn't sit directly over a face in the background video,
-     and keep it well clear of the edge with padding. */
-  align-items: flex-end;
-  padding-bottom: clamp(1.25rem, 6vh, 3.5rem);
+  /* Push the puzzle card to the right (instead of dead-center) so
+     the video — now shown uncropped via object-fit:contain below —
+     stays fully visible on the left/center of the screen. */
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: clamp(1rem, 5vw, 3rem);
 }
 
 /* ---- Background video ----
@@ -192,11 +193,12 @@ button{
   inset:0;
   width:100%;
   height:100%;
-  object-fit:cover;
-  /* Shifts which part of the video shows through the crop — lower
-     the vertical (2nd) number to show more of the TOP of the video,
-     raise it to show more of the BOTTOM. 50% 50% = dead center. */
-  object-position: 50% 20%;
+  /* "contain" instead of "cover" so the ENTIRE video frame is always
+     visible (nothing cropped/zoomed in) — it may letterbox with the
+     screen's dark background showing on the sides/top/bottom
+     depending on the video's aspect ratio vs the viewport's. */
+  object-fit: contain;
+  object-position: center center;
   z-index:0;
   filter: brightness(0.55) saturate(1.1);
 }
@@ -242,7 +244,7 @@ button{
 .puzzle-card{
   position:relative;
   z-index:2;
-  width:min(92vw, 460px);
+  width:min(85vw, 420px);
   /* More transparent than a typical card + a stronger blur, so the
      background video (and her face in it) still reads through
      instead of being fully hidden behind solid white. Tweak the
