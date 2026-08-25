@@ -1089,8 +1089,13 @@ function handleCorrectAnswer(){
 
   balloons.forEach(function(balloon){
     balloon.addEventListener('click', function(){ popBalloon(balloon); });
-    // Touch devices: pop on first touch too, so it feels instant
-    balloon.addEventListener('touchstart', function(e){
+    // Touch devices: pop on touchEND, not touchstart. This matters a
+    // lot for the song: iOS Safari only treats touchend/click as a
+    // valid "user gesture" for starting audio playback — touchstart
+    // does NOT count, so calling song.play() from a touchstart
+    // handler gets silently ignored on iPhones. preventDefault here
+    // still suppresses the ghost click that would otherwise follow.
+    balloon.addEventListener('touchend', function(e){
       e.preventDefault();
       popBalloon(balloon);
     }, { passive: false });
