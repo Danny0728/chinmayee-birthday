@@ -10,4 +10,4 @@ This site is hosted with GitHub Pages — open the Pages URL once it's live (see
 
 - `index.html` — the whole site (puzzle, balloon pop game, wish screen)
 - `birthday-video.mp4` — background video that plays behind the puzzle
-- `song-placeholder.mp3` — replace with the real birthday song file
+- `birthday-song.mp3` — the birthday song, plays once all 4 balloons are popped
